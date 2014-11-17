@@ -2,7 +2,7 @@ FractalExplorer
 ===============
 A Project from CALTECH Java Course
 <br>
-11/16/2014 
+11/16/2014 <br>
   Fist update.
   I will contnue updating it whenever I finish a new lab project which makes change on it, 
   hoping the eventual version can exceed 1000 lines code.
