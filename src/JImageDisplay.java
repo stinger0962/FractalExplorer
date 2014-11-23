@@ -15,6 +15,11 @@ import java.awt.image.*;
 
 public class JImageDisplay extends JComponent {
     private BufferedImage bImage;
+    //public accessor 
+    public BufferedImage getImage()
+    {
+        return bImage;
+    }
     /**
      * constructor initialize a bufferedimage with width and height
      * also call JComponent.setPreferredSize() method 
