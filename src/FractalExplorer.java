@@ -4,7 +4,8 @@
  * and open the template in the editor.
  */
 /**
- *
+ * 
+ *client class, create and process GUI
  * @author Nio
  */
 import java.awt.BorderLayout;
@@ -35,37 +36,96 @@ public class FractalExplorer {
      * specifying the range of complex plane that we are currently displaying.
      */
     private Rectangle2D.Double complexPlane;
+    
+    /**
+     * indicates the number of ROWs not painted during a redraw process
+     * WARNING: to avoid any concurrent access, ONLY access it from Event Dispatch Thread 
+    */
+    private int rowsRemaining;
    
     /**
      * a helper method to draw fractals
-     * i indicates current x-coordinate
-     * j indicates current y-coordinate
-     * transfer (i,j) to (xCoord,yCoord) to calculate number of iterations
-     * draw different color according to number of iterations
+     * create a SwingWorker object for every single ROW in the image
+     * implement worker's execute method 
      */
     private void drawFractal()
     {
-        for(int i = 0; i < displaySize; i++) 
+        //for each ROW in the displayImage
+        for(int j = 0; j < displaySize; j++) 
         {
-            for(int j = 0; j < displaySize; j++)
+            FractalWorker worker = new FractalWorker(j);
+            //schedule this worker for execution on a SwingWorker thread
+            worker.execute();
+        }
+    }
+    /**
+     * inner class extends SwingWorker, in order to handle the following time-consuming event:
+     * computing color values for a single ROW of the fractal
+     * the reason it only processes one ROW is to generate multiple threads, thus fastening rendering
+     * if the program is running on a PC with multiple processors
+     * WARNING: interactions with swing components is only allowed in process method
+     */
+    private class FractalWorker extends SwingWorker<Object, Object>
+    {
+        //Y-coordinate of the row
+        private int yCoord;
+        // integer array to store RGB values for each pixel in that row
+        private int[] rgbValues;
+        
+        //constructor take Y-coordinate and store it
+        public FractalWorker(int yCoord)
+        {
+            this.yCoord = yCoord;
+        }
+        //only compute the RGB values of pixel, don't paint! Remember the Swing restriction
+        @Override
+        protected Object doInBackground()
+        {
+            //allocate the array of integer, which is used to store RGBValues of the row
+            rgbValues = new int[displaySize];
+            //compute RGB value for each pixel in the row with index this.yCoord
+            //i indicates current xCoord
+            //transfer (i,this.Ycoord) from int to double (xCoord,yCoord) in order to calculate number of iterations
+            //get the number of iterations
+            for(int i = 0; i < displaySize; i++) 
             {
                 int numIterations = 0;
                 double xCoord = FractalGenerator.getCoord(complexPlane.x, complexPlane.x+complexPlane.width, displaySize, i);
-                double yCoord = FractalGenerator.getCoord(complexPlane.y, complexPlane.y+complexPlane.height, displaySize, j);
+                double yCoord = FractalGenerator.getCoord(complexPlane.y, complexPlane.y+complexPlane.height, displaySize, this.yCoord);
                 numIterations = fractalBase.numIterations(xCoord, yCoord);
+                //calculate RGBValue, store it to the array
                 if(numIterations == -1)
                 {
-                    displayImage.drawPixel(i, j, 0);
+                    rgbValues[i] = 0;
                 }
                 else
                 {
                     float hue = 0.7f + (float)numIterations / 200f;
-                    int rgbColor = Color.HSBtoRGB(hue, 1f, 1f);
-                    displayImage.drawPixel(i, j, rgbColor);
+                    rgbValues[i] = Color.HSBtoRGB(hue, 1f, 1f);
                 }
             }
+            return null;
         }
-        displayImage.repaint();
+        /**
+         * called when background task is finished
+         * paint each pixel in that ROW
+         */
+        @Override
+        protected void done() 
+        {
+            for(int i = 0; i < displaySize; i++)
+            {
+                //paint the pixel with computed RGB value
+                displayImage.drawPixel(i, this.yCoord, rgbValues[i]);
+            }
+            //use partial update version of JComponent.repaint method
+            //only repaint a small region start at(0, this.yCoord) with width of displaySize and height of 1
+            displayImage.repaint(0, 0, this.yCoord, displaySize, 1);
+        }
+
+        
+        
+        
     }
     /**
      * inner class to handle various events
