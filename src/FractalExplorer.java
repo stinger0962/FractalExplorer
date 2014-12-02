@@ -39,9 +39,16 @@ public class FractalExplorer {
     
     /**
      * indicates the number of ROWs not painted during a redraw process
+     * this field is used to disable user interaction during drawing
      * WARNING: to avoid any concurrent access, ONLY access it from Event Dispatch Thread 
     */
     private int rowsRemaining;
+    /**
+     * several JComponents that will be disabled during drawing
+     */
+    private JComboBox fractalComboBox;
+    private JButton saveButton;
+    private JButton resetButton;
    
     /**
      * a helper method to draw fractals
@@ -50,6 +57,16 @@ public class FractalExplorer {
      */
     private void drawFractal()
     {
+        //first of all, disable several UI 
+        enableUI(false);
+        /**
+         * set how many rows are still to be painted
+         * to avoid concurrent access to this value
+         * only read and write it from the Event Dispatch Thread
+         * thus its value is decremented by 1 in the worker's done method
+         * REMEMBER done is called automatically by EDT
+         */
+            rowsRemaining = displaySize;
         //for each ROW in the displayImage
         for(int j = 0; j < displaySize; j++) 
         {
@@ -121,6 +138,10 @@ public class FractalExplorer {
             //use partial update version of JComponent.repaint method
             //only repaint a small region start at(0, this.yCoord) with width of displaySize and height of 1
             displayImage.repaint(0, 0, this.yCoord, displaySize, 1);
+            //decrement rowsRemaining, if all painting is done, enable UI again
+            --rowsRemaining;
+            if(rowsRemaining == 0)
+                enableUI(true);
         }
 
         
@@ -215,6 +236,11 @@ public class FractalExplorer {
     {
         public void mouseClicked(MouseEvent e)
         {
+            //if painting is not done, return immediately
+            if(!(rowsRemaining == 0))
+            {
+                return;
+            }
             double xCoord = FractalGenerator.getCoord(complexPlane.x, complexPlane.x+complexPlane.width, displaySize, e.getX());
             double yCoord = FractalGenerator.getCoord(complexPlane.x, complexPlane.x+complexPlane.width, displaySize, e.getY());
             fractalBase.recenterAndZoomRange(complexPlane, xCoord, yCoord, 0.5);
@@ -246,7 +272,7 @@ public class FractalExplorer {
         //create a JPanel for JLabel and JComboBox
         JPanel topPanel = new JPanel();
         topPanel.add(new JLabel("Fractal: "));
-        JComboBox fractalComboBox = new JComboBox();
+        fractalComboBox = new JComboBox();
         //use JComboBox.addItem method 
         //in order to use JComboBox.getSelectedItem() to return Object
         fractalComboBox.addItem(new Mandelbrot());
@@ -264,11 +290,11 @@ public class FractalExplorer {
         mainWindow.getContentPane().add(displayImage,BorderLayout.CENTER);
         //create a JPanel with two buttons, register to the common ActionHandler and set their action command
         JPanel bottomPanel = new JPanel();
-        JButton saveButton = new JButton("Save Image");
+        saveButton = new JButton("Save Image");
         saveButton.setActionCommand("Save");
         saveButton.addActionListener(multipleHandler);
         
-        JButton resetButton = new JButton("Reset Display");
+        resetButton = new JButton("Reset Display");
         resetButton.setActionCommand("Reset");
         resetButton.addActionListener(multipleHandler);
         
@@ -281,6 +307,17 @@ public class FractalExplorer {
         mainWindow.pack();//Causes this Window to be sized to fit the preferred size and layouts of its subcomponents. 
         mainWindow.setVisible(true);
         mainWindow.setResizable(false);
+    }
+    
+    /**
+     * update the enabled-state of combo box, save button, and reset button
+     * @param val indicates enabled-state of UI 
+     */
+    public void enableUI(boolean val)
+    {
+            fractalComboBox.setEnabled(val);
+            saveButton.setEnabled(val);
+            resetButton.setEnabled(val);
     }
     
     /**
