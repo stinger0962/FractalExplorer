@@ -13,3 +13,6 @@ Hopefully the project will eventually be of thousand-line scale.<br>
   Support multiple threads.<br>
   Drawing is processed at background.<br>
   Resulting a much faster rendering.<br>
+<br>12/02/2014 <br>
+  Add features to ignore events during redraw.<br>
+  Interaction with UI are disabled during redraw.<br>
